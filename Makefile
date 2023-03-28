@@ -9,7 +9,8 @@ top_builddir=/usr/share/apache2
 include /usr/share/apache2/build/special.mk
 LDFLAGS += -L/usr/lib/x86_64-linux-gnu
 LDFLAGS += -lapr-1
-CFLAGS += -l/usr/include/apr-1.0
+LDFLAGS += -L/usr/lib/x86_64-linux-gnu/libapr-1.so
+#CFLAGS += -l/usr/include/apr-1.0
 #   the used tools
 APACHECTL=apachectl
 

@@ -14,7 +14,7 @@
 module AP_MODULE_DECLARE_DATA apache20_module;
 
 
-#define MAX_HITS        1  //Maximum number of times a user can connect within an interval without being blocked
+#define MAX_HITS        200  //Maximum number of times a user can connect within an interval without being blocked
 #define INTERVAL        10
 #define BLOCKING_PERIOD 10
 
@@ -31,7 +31,7 @@ struct requester{
 struct requester *hits[3097];  //Number of times the user connected to the server
 
 
-const char *whitelisted_addresses[][15] = {"8.8.8.8"};
+const char *whitelisted_addresses[][15] = {};
 
 
 static void register_hooks(apr_pool_t *p);
@@ -40,7 +40,9 @@ void insert(char ip[], time_t timestamp);
 struct requester *create(long size, apr_pool_t *pool);
 int is_whitelisted(char ip[]);
 struct requester *find_user(const char *ip);
-
+int clear_mem(struct requester **hits);
+static void register_hooks(apr_pool_t *p);
+//ap_hook_access_checker(access_checker,NULL,NULL,APR_HOOK_LAST);
 
 static int access_checker(request_rec *r)
 {   // popis funkce 
@@ -48,20 +50,22 @@ static int access_checker(request_rec *r)
     time_t t = time(NULL);
     int ret = OK;
 
-    ap_log_rerror(APLOG_MARK, APLOG_ERR,0,r,"debug: %s",r->connection->local_ip);
-
+   //ap_log_rerror(APLOG_MARK, APLOG_ERR,0,r,"debug: %s",r->connection->local_ip);
+/*
     if(is_whitelisted(r->connection->client_ip))    //Checking if the user is whitelisted, IF yes, without any controlling, the user gains access
+        ap_log_rerror(APLOG_MARK, APLOG_ERR,0,r,"whitelisted?");
         return OK;
-
-    user = find_user(r->connection->client_ip);
+*/
+    //user = find_user(r->connection->client_ip);
 
     if(user!=NULL && t-user->timestamp<blocking_period){    //Looking for the user in the blacklisted addresses, IF found AND the blocking period did not expire, deny access
+        ap_log_rerror(APLOG_MARK, APLOG_ERR,0,r,"blocked?");
         user->timestamp = time(NULL);
         return HTTP_FORBIDDEN;
     }
     else{
-        //user = find_user(r->connection->client_ip);
-        
+        ap_log_rerror(APLOG_MARK, APLOG_ERR,0,r,"else?");
+        user = find_user(r->connection->client_ip);
         if(user!=NULL)
         {
             if(t-user->timestamp<interval && user->count>=maximum_hits){    //check amount of hits within an interval
@@ -115,12 +119,14 @@ struct requester *find_user(const char *ip){
 
 int is_whitelisted(char ip[]){  
     //checking if the user is part of the whitelisted addresses
-    char investigated_ip[15];
+    char investigated_ip[21];
     strcpy(investigated_ip,ip);
     for(int i=0;i<sizeof(whitelisted_addresses);i++)
     {
         if(strcmp(investigated_ip, *whitelisted_addresses[i]))
+            {
             return 1;
+            }
     }
     return 0;
 }
