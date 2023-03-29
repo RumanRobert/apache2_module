@@ -16,7 +16,7 @@ module AP_MODULE_DECLARE_DATA apache20_module;
 
 #define MAX_HITS        200  //Maximum number of times a user can connect within an interval without being blocked
 #define INTERVAL        10
-#define BLOCKING_PERIOD 10
+#define BLOCKING_PERIOD 60
 
 static int blocking_period = BLOCKING_PERIOD;
 static int maximum_hits = MAX_HITS; 
@@ -31,7 +31,7 @@ struct requester{
 struct requester *hits[3097];  //Number of times the user connected to the server
 
 
-const char *whitelisted_addresses[][15] = {};
+const char *whitelisted_addresses[][15] = {"192.168.112.128"};
 
 
 static void register_hooks(apr_pool_t *p);
@@ -51,29 +51,30 @@ static int access_checker(request_rec *r)
     int ret = OK;
 
    //ap_log_rerror(APLOG_MARK, APLOG_ERR,0,r,"debug: %s",r->connection->local_ip);
-/*
+   
     if(is_whitelisted(r->connection->client_ip))    //Checking if the user is whitelisted, IF yes, without any controlling, the user gains access
-        ap_log_rerror(APLOG_MARK, APLOG_ERR,0,r,"whitelisted?");
-        return OK;
-*/
+        {
+            ap_log_rerror(APLOG_MARK, APLOG_ERR,0,r,"whitelisted?");
+            return OK;
+        }
     //user = find_user(r->connection->client_ip);
 
     if(user!=NULL && t-user->timestamp<blocking_period){    //Looking for the user in the blacklisted addresses, IF found AND the blocking period did not expire, deny access
-        ap_log_rerror(APLOG_MARK, APLOG_ERR,0,r,"blocked?");
         user->timestamp = time(NULL);
         return HTTP_FORBIDDEN;
     }
     else{
-        ap_log_rerror(APLOG_MARK, APLOG_ERR,0,r,"else?");
         user = find_user(r->connection->client_ip);
         if(user!=NULL)
         {
-            if(t-user->timestamp<interval && user->count>=maximum_hits){    //check amount of hits within an interval
+            if(t-user->timestamp<interval && user->count>=maximum_hits){    //check amount of hits within an interval, has site been hit too much?
                 ret = HTTP_FORBIDDEN;
+                ap_log_rerror(APLOG_MARK, APLOG_ERR,0,r,"Site has been hit too much by: %s", r->connection->client_ip);
             }
             else{
-                if(t-user->timestamp>=interval)
+                if(t-user->timestamp>=interval){
                     user->count=0;
+                }
             }
             user->timestamp = t;
             user->count++;
